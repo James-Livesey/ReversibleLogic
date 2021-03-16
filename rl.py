@@ -1,7 +1,7 @@
 from typing import List
 from copy import deepcopy
 
-DEFAULT_COMPONENT_NAME = "(Unnamed)"
+DEFAULT_COMPONENT_NAME = "" # Used to be `"(Unnamed)"`
 
 class Component:
     def __init__(self, name = DEFAULT_COMPONENT_NAME):
@@ -148,13 +148,3 @@ def union(*s):
                 result.append(inputTable)
 
     return result
-
-S = RXOR(RXOR(Input("A"), Input("B")), Input("Cin"))
-Cout = ROR(RAND(Input("Cin"), RXOR(Input("A"), Input("B"))), RAND(Input("A"), Input("B")))
-
-permsS = solve(S, False)
-permsCout = solve(Cout, True)
-
-print("S:", permsS)
-print("Cout:", permsCout)
-print("Intersect:", intersect(permsS, permsCout))
