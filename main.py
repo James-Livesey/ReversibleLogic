@@ -1,7 +1,10 @@
 from copy import deepcopy
 
+DEFAULT_COMPONENT_NAME = "(Unnamed)"
+
 class ReversibleGate:
-    def __init__(self):
+    def __init__(self, name = DEFAULT_COMPONENT_NAME):
+        self.name = name
         self.inputs = []
 
     def generateTruths(self, expected = True):
@@ -27,7 +30,7 @@ class ReversibleGate:
         return representations
 
 class Input:
-    def __init__(self, name = "Unnamed"):
+    def __init__(self, name = DEFAULT_COMPONENT_NAME):
         self.name = name
         self.value = None
 
@@ -43,7 +46,9 @@ class GateValueRepresentation:
         self.values = values
 
 class RAND(ReversibleGate):
-    def __init__(self, a, b):
+    def __init__(self, a, b, name = DEFAULT_COMPONENT_NAME):
+        super().__init__(name)
+
         self.inputs = [a, b]
 
     def generateTruths(self, expected = True):
@@ -59,7 +64,9 @@ class RAND(ReversibleGate):
             ]
 
 class ROR(ReversibleGate):
-    def __init__(self, a, b):
+    def __init__(self, a, b, name = DEFAULT_COMPONENT_NAME):
+        super().__init__(name)
+
         self.inputs = [a, b]
 
     def generateTruths(self, expected = True):
@@ -75,7 +82,9 @@ class ROR(ReversibleGate):
             ]
 
 class RXOR(ReversibleGate):
-    def __init__(self, a, b):
+    def __init__(self, a, b, name = DEFAULT_COMPONENT_NAME):
+        super().__init__(name)
+
         self.inputs = [a, b]
 
     def generateTruths(self, expected = True):
@@ -91,28 +100,44 @@ class RXOR(ReversibleGate):
             ]
 
 class RNOT(ReversibleGate):
-    def __init__(self, a):
+    def __init__(self, a, name = DEFAULT_COMPONENT_NAME):
+        super().__init__(name)
+
         self.inputs = [a]
 
     def generateTruths(self, expected = True):
         return [[not expected]]
 
-def traverseSolvedGateValueRepresentations(representations, indentation = 0):
-    humanReadableForm = "("
+def traverseSolvedGateValueRepresentations(representations, depth = 0, scope = "(Root)"):
+    indentation = "|   " * (depth + 1)
+    humanReadableForm = ("|   " * depth) + "{scope} (\n".format(scope = scope)
 
-    subrepresentations = []
+    representationCollections = []
+    representationGates = []
 
     for representationObject in representations:
         if isinstance(representationObject, Input):
-            humanReadableForm += "{name} = {value}; ".format(name = representationObject.name, value = representationObject.value)
+            humanReadableForm += indentation + "{name} = {value}\n".format(name = representationObject.name, value = representationObject.value)
         else:
-            subrepresentations += representationObject[0].inputRepresentations
+            for i in range(0, len(representationObject)):
+                representationCollections.append(representationObject[i])
+                representationGates.append(representationObject[i].gate)
 
-    if len(subrepresentations) > 0:
-        humanReadableForm += traverseSolvedGateValueRepresentations(subrepresentations, indentation + 1)
+    if len(representationCollections) > 0:
+        for i in range(0, len(representationCollections)):
+            humanReadableForm += indentation + "Permutation {}:\n".format(i + 1)
+            humanReadableForm += traverseSolvedGateValueRepresentations(representationCollections[i].inputRepresentations, depth + 1,
+                "{gate}: {name}".format(gate = type(representationGates[i]).__name__, name = representationGates[i].name)
+            )
 
-    return humanReadableForm + ") "
+    return humanReadableForm + ("|   " * depth) + ")\n"
 
-gate = RXOR(RXOR(Input("A"), RXOR(RAND(Input("D"), Input("E")), RXOR(RAND(Input("F"), RNOT(Input("B"))), Input("G")))), Input("C"))
+# gate = ROR(Input("A"), ROR(Input("B"), Input("C")))
 
-print(traverseSolvedGateValueRepresentations([gate.solveChildren(True)]))
+S = RXOR(RXOR(Input("A"), Input("B")), Input("Cin"))
+Cout = ROR(RAND(Input("Cin"), RXOR(Input("A"), Input("B"))), RAND(Input("A"), Input("B"), "Q"))
+
+# print(traverseSolvedGateValueRepresentations([gate.solveChildren(True)]))
+
+# print(traverseSolvedGateValueRepresentations([S.solveChildren(True)]))
+# print(traverseSolvedGateValueRepresentations([Cout.solveChildren(True)]))
