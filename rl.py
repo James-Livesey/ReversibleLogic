@@ -1,15 +1,24 @@
 from typing import List
 from copy import deepcopy
 
-DEFAULT_COMPONENT_NAME = "" # Used to be `"(Unnamed)"`
+DEFAULT_COMPONENT_NAME = "(Unnamed)"
 
 class Component:
     def __init__(self, name = DEFAULT_COMPONENT_NAME):
         self.name = name
 
+    def generatePermutations(expected = True):
+        return []
+
 class Truth:
     def __init__(self, *mappings: List[bool]):
         self.mappings = mappings
+
+class Permutation:
+    def __init__(self, reference: Component, inputPermutations: Component, value = True):
+        self.reference = reference
+        self.inputPermutations = inputPermutations
+        self.value = value
 
 class ReversibleGate(Component):
     def __init__(self, name = DEFAULT_COMPONENT_NAME):
@@ -19,12 +28,29 @@ class ReversibleGate(Component):
     def generateTruths(self, expected = True) -> List[Truth]:
         return [Truth(expected)]
 
+    def generatePermutations(self, expected = True) -> List[Permutation]:
+        truths = self.generateTruths(expected)
+        permutations = []
+
+        for truth in truths:
+            inputPermutations = []
+
+            for i in range(0, len(self.inputs)):
+                inputPermutations.append(self.inputs[i].generatePermutations(truth.mappings[i]))
+
+            permutations.append(Permutation(self, inputPermutations, expected))
+
+        return permutations
+
 class Input(Component):
     def __init__(self, name = DEFAULT_COMPONENT_NAME):
         super().__init__(name)
 
         self.name = name
         self.value = None
+
+    def generatePermutations(self, expected = True) -> List[Permutation]:
+        return [Permutation(self, [], expected)]
 
 class RAND(ReversibleGate):
     def __init__(self, a, b, name = DEFAULT_COMPONENT_NAME):
@@ -89,6 +115,21 @@ class RNOT(ReversibleGate):
     def generateTruths(self, expected = True):
         return [Truth(not expected)]
 
+def printPermutationDiagram(permutations, depth = 0):
+    indent = "    " * (depth * 2)
+
+    for i in range(0, len(permutations)):
+        print(indent + "Permutation {cycle}: [{component}] {name} = {value}".format(
+            cycle = i + 1,
+            component = type(permutations[i].reference).__name__,
+            name = permutations[i].reference.name,
+            value = permutations[i].value
+        ))
+
+        for j in range(0, len(permutations[i].inputPermutations)):
+            print(indent + "    Input {input}:".format(input = j + 1))
+            printPermutationDiagram(permutations[i].inputPermutations[j], depth + 1)
+
 def _normaliseDict(oldDict):
     newDict = {}
 
@@ -97,28 +138,48 @@ def _normaliseDict(oldDict):
 
     return newDict
 
-def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, permutations = []):
-    truths = root.generateTruths(expected)
+def _dedupeInputTable(a):
+    b = []
 
-    for truth in truths:
-        for i in range(0, len(root.inputs)):
-            if isinstance(root.inputs[i], Input):
-                inputValues[root.inputs[i].name] = truth.mappings[i]
-            else:
-                solveResult = _solveHelper(root.inputs[i], truth.mappings[i], deepcopy(inputValues), depth + 1, permutations)
+    for i in a:
+        if i not in b:
+            b.append(_normaliseDict(i))
 
-                inputValues.update(solveResult["inputValues"])
+    return b
 
-        if inputValues not in permutations:
-            permutations.append(_normaliseDict(deepcopy(inputValues)))
+def inputPermutationsToInputTable(inputPermutations):
+    inputTable = [{}]
+    shouldDupeLastItem = False
 
-    return {
-        "inputValues": inputValues,
-        "permutations": permutations
-    }
+    for i in range(0, len(inputPermutations)):
+        if len(inputPermutations[i]) == 1 and isinstance(inputPermutations[i][0].reference, Input):
+            inputTable[-1][inputPermutations[i][0].reference.name] = inputPermutations[i][0].value
+
+    for i in range(0, len(inputPermutations)):
+        if len(inputPermutations[i]) == 1 and isinstance(inputPermutations[i][0].reference, Input):
+            continue
+
+        for permutation in inputPermutations[i]:
+            localInputTable = inputPermutationsToInputTable(permutation.inputPermutations)
+
+            for inputValues in localInputTable:
+                if shouldDupeLastItem:
+                    inputTable.append(deepcopy(inputTable[-1]))
+
+                shouldDupeLastItem = True
+
+                inputTable[-1] |= inputValues
+
+    return _dedupeInputTable(inputTable)
 
 def solve(root: Component, expected = True):
-    return _solveHelper(root = root, expected = expected, inputValues = {}, permutations = [])["permutations"]
+    fullInputTable = []
+    permutations = root.generatePermutations(expected)
+
+    for permutation in permutations:
+        fullInputTable += inputPermutationsToInputTable(permutation.inputPermutations)
+
+    return fullInputTable
 
 def _intersect2(a, b):
     result = []
