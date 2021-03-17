@@ -89,6 +89,14 @@ class RNOT(ReversibleGate):
     def generateTruths(self, expected = True):
         return [Truth(not expected)]
 
+def _normaliseDict(oldDict):
+    newDict = {}
+
+    for key in sorted(oldDict):
+        newDict[key] = oldDict[key]
+
+    return newDict
+
 def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, permutations = []):
     truths = root.generateTruths(expected)
 
@@ -102,7 +110,7 @@ def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, 
                 inputValues.update(solveResult["inputValues"])
 
         if inputValues not in permutations:
-            permutations.append(deepcopy(inputValues))
+            permutations.append(_normaliseDict(deepcopy(inputValues)))
 
     return {
         "inputValues": inputValues,
@@ -111,14 +119,6 @@ def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, 
 
 def solve(root: Component, expected = True):
     return _solveHelper(root = root, expected = expected, inputValues = {}, permutations = [])["permutations"]
-
-def _normaliseDict(oldDict):
-    newDict = {}
-
-    for key in sorted(oldDict):
-        newDict[key] = oldDict[key]
-
-    return newDict
 
 def _intersect2(a, b):
     result = []
