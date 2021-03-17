@@ -97,9 +97,11 @@ def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, 
             if isinstance(root.inputs[i], Input):
                 inputValues[root.inputs[i].name] = truth.mappings[i]
             else:
-                inputValues.update(_solveHelper(root.inputs[i], truth.mappings[i], deepcopy(inputValues), depth + 1, permutations)["inputValues"])
+                solveResult = _solveHelper(root.inputs[i], truth.mappings[i], deepcopy(inputValues), depth + 1, permutations)
 
-        if depth == 0:
+                inputValues.update(solveResult["inputValues"])
+
+        if inputValues not in permutations:
             permutations.append(deepcopy(inputValues))
 
     return {
