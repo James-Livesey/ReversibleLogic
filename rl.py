@@ -108,7 +108,7 @@ def _solveHelper(root: Component, expected = True, inputValues = {}, depth = 0, 
     }
 
 def solve(root: Component, expected = True):
-    return _solveHelper(root = root, expected = expected, permutations = [])["permutations"]
+    return _solveHelper(root = root, expected = expected, inputValues = {}, permutations = [])["permutations"]
 
 def _normaliseDict(oldDict):
     newDict = {}
